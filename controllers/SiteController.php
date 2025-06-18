@@ -88,4 +88,55 @@ class SiteController extends Controller
         fclose($fp);
         Yii::$app->end();
     }
+
+    public function actionViewData()
+ {
+    $rows = Yii::$app->db->createCommand('SELECT * FROM mos_result ORDER BY id DESC')->queryAll();
+
+    $categories = [
+        'clean'     => range(1, 31),
+        'noisy'     => range(32, 58),
+        'pwn'       => range(59, 85),
+        'pwn_ses'   => range(86, 113),
+        'fcn'       => range(114, 141),
+    ];
+
+    $stats = [
+        'clean' => [],
+        'noisy' => [],
+        'pwn' => [],
+        'pwn_ses' => [],
+        'fcn' => [],
+    ];
+
+    foreach ($rows as &$r) {
+        preg_match('/sample(\d+)_compensated\.wav/', $r['sample'], $m);
+        $index = isset($m[1]) ? (int)$m[1] : 0;
+        $r['category'] = 'unknown';
+
+        foreach ($categories as $label => $range) {
+            if (in_array($index, $range)) {
+                $r['category'] = $label;
+                $stats[$label][] = (int)$r['score'];
+                break;
+            }
+        }
+    }
+
+    $summary = [];
+    foreach ($stats as $label => $scores) {
+        $count = count($scores);
+        $avg = $count ? round(array_sum($scores) / $count, 2) : 0;
+        $summary[$label] = [
+            'count' => $count,
+            'avg' => $avg,
+        ];
+    }
+
+    return $this->render('view-data', [
+        'results' => $rows,
+        'stats' => $summary,
+    ]);
+    }
+
 }
