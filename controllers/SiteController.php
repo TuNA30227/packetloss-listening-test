@@ -10,42 +10,53 @@ class SiteController extends Controller
 {
     public function actionIndex()
     {
-        return $this->render('index');
-    }
+        $csvFile = Yii::getAlias('@app/web/results.csv');
+        $scores = [];
 
-    public function actionAjaxSubmit()
-    {
-        Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+    if (file_exists($csvFile)) {
+        $methods = [
+            'Clean'     => range(1, 27),
+            'Noisy'     => range(28, 54),
+            'PWN'       => range(55, 81),
+            'PWN+SES'   => range(82, 108),
+            'FCN'       => range(109, 135),
+        ];
 
-        try {
-            $data = json_decode(file_get_contents('php://input'), true);
+        $data = array_map('str_getcsv', file($csvFile));
+        unset($data[0]); // 移除表頭
 
-            // 寫入 CSV 路徑
-            $csvFile = Yii::getAlias('@app/web/results.csv');
+        foreach ($methods as $method => $range) {
+            $scores[$method] = ['sum' => 0, 'count' => 0];
+        }
 
-            // 若檔案不存在，先寫表頭
-            $writeHeader = !file_exists($csvFile);
-            $file = fopen($csvFile, 'a');
+        foreach ($data as $row) {
+            if (count($row) < 3) continue;
 
-            if ($writeHeader) {
-                fputcsv($file, ['Name', 'Sample', 'Score', 'Timestamp']);
+            $sampleName = $row[1];
+            $score = floatval($row[2]);
+
+            if (preg_match('/sample(\d+)_/', $sampleName, $match)) {
+                $sampleNum = intval($match[1]);
+                foreach ($methods as $method => $range) {
+                    if (in_array($sampleNum, $range)) {
+                        $scores[$method]['sum'] += $score;
+                        $scores[$method]['count']++;
+                        break;
+                    }
+                }
             }
+        }
 
-            // 寫入資料
-            fputcsv($file, [
-                $data['name'] ?? '',
-                $data['sample'] ?? '',
-                $data['score'] ?? '',
-                date('Y-m-d H:i:s')
-            ]);
-
-            fclose($file);
-
-            return ['status' => 'success'];
-        } catch (\Exception $e) {
-            return ['status' => 'error', 'message' => $e->getMessage()];
+        // 計算平均
+        foreach ($scores as $method => &$info) {
+            $info['avg'] = $info['count'] > 0 ? round($info['sum'] / $info['count'], 2) : '-';
         }
     }
+
+    return $this->render('index', [
+        'scores' => $scores
+    ]);
+ }
 
 
     // ✅ 匯出 CSV 檔案
