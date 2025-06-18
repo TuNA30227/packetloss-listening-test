@@ -23,12 +23,14 @@ class SiteController extends Controller
             // 寫入 debug 檔案查看前端傳來的資料
             file_put_contents(Yii::getAlias('@app/runtime/debug_ajax.txt'), print_r($data, true));
 
+            // 🐞 DEBUG: 環境變數有沒有成功讀到
+            $jsonCreds = getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON');
+            file_put_contents(Yii::getAlias('@app/runtime/debug_env.txt'), $jsonCreds ? '✅ 環境變數已讀取' : '❌ 環境變數為空');
+
             if (!isset($data['name'], $data['sample'], $data['score'], $data['category'])) {
                 throw new \Exception("資料不完整");
             }
 
-            // 從 Render 環境變數取得 JSON 憑證
-            $jsonCreds = getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON');
             if (!$jsonCreds) {
                 throw new \Exception("GOOGLE_APPLICATION_CREDENTIALS_JSON 環境變數未設定");
             }
