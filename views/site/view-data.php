@@ -1,9 +1,10 @@
 <?php
+
 use yii\helpers\Html;
+
 ?>
 
-<h2>📋 問卷回覆列表</h2>
-
+<h2>🗂 所有問卷紀錄</h2>
 <table border="1" cellpadding="6" cellspacing="0">
     <thead>
         <tr>
@@ -33,11 +34,11 @@ use yii\helpers\Html;
         <tr><th>Category</th><th>Count</th><th>Average Score</th></tr>
     </thead>
     <tbody>
-    <?php foreach ($stats as $cat => $data): ?>
+    <?php foreach ($stats as $label => $data): ?>
         <tr>
-            <td><?= Html::encode($cat) ?></td>
-            <td><?= $data['count'] ?></td>
-            <td><?= $data['avg'] ?></td>
+            <td><?= Html::encode($label) ?></td>
+            <td><?= Html::encode($data['count']) ?></td>
+            <td><?= Html::encode($data['avg']) ?></td>
         </tr>
     <?php endforeach; ?>
     </tbody>
