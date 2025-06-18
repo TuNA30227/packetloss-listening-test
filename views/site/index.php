@@ -58,8 +58,8 @@ console.log("📌 JavaScript 載入成功");
 
 document.addEventListener("DOMContentLoaded", function () {
     console.log("📌 DOM 完全載入");
-    const audioList = Array.from({length: 135}, (_, i) => `sample${i + 1}_compensated.wav`).sort(() => Math.random() - 0.5);  
-    // const audioList = Array.from({length: 135}, (_, i) => `sample${i + 1}_compensated.wav`).sort(() => Math.random() - 0.5) .slice(0, 5);  // ✅ 測試階段先跑 5 題;
+    // const audioList = Array.from({length: 135}, (_, i) => `sample${i + 1}_compensated.wav`).sort(() => Math.random() - 0.5);  
+    const audioList = Array.from({length: 135}, (_, i) => `sample${i + 1}_compensated.wav`).sort(() => Math.random() - 0.5) .slice(0, 5);  // ✅ 測試階段先跑 5 題;
     let currentIndex = 0;
     let userName = '';
     let answers = Array(135).fill(null);
