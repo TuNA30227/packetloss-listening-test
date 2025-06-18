@@ -14,6 +14,7 @@ class SiteController extends Controller
     }
 
     // ✅ 儲存到 CSV（不使用 MySQL）
+    
     public function actionAjaxSubmit()
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
@@ -37,58 +38,42 @@ class SiteController extends Controller
     }
 
     // ✅ 匯出 CSV 檔案（含分類與平均）
-    public function actionExportCsv()
-    {
-        $sourceFile = Yii::getAlias('@app/data/mos_results.csv');
-        if (!file_exists($sourceFile)) {
-            throw new \yii\web\NotFoundHttpException('No data found.');
-        }
+    public function actionAjaxSubmit()
+{
+    $body = file_get_contents("php://input");
+    $data = json_decode($body, true);
 
-        $rows = array_map('str_getcsv', file($sourceFile));
-        $headers = array_shift($rows); // name, sample, score
+    $name = $data['name'] ?? '';
+    $sample = $data['sample'] ?? '';
+    $score = $data['score'] ?? '';
+    $category = $data['category'] ?? '';
 
-        $categories = [
-            'clean'     => range(1, 31),
-            'noisy'     => range(32, 58),
-            'pwn'       => range(59, 85),
-            'pwn_ses'   => range(86, 113),
-            'fcn'       => range(114, 141),
-        ];
+    require_once __DIR__ . '/../vendor/autoload.php';
 
-        $stats = ['clean'=>[], 'noisy'=>[], 'pwn'=>[], 'pwn_ses'=>[], 'fcn'=>[]];
+    $client = new \Google_Client();
+    $client->setApplicationName('MOS Listening Form');
+    $client->setScopes([\Google_Service_Sheets::SPREADSHEETS]);
+    $client->setAuthConfig(__DIR__ . '/../credentials.json'); // 根據你實際放的位置調整
+    $client->setAccessType('offline');
 
-        $filename = 'mos_results_export.csv';
-        header('Content-Type: text/csv; charset=utf-8');
-        header("Content-Disposition: attachment; filename=\"$filename\"");
+    $service = new \Google_Service_Sheets($client);
 
-        $fp = fopen('php://output', 'w');
-        fputcsv($fp, ['Name', 'Sample', 'Score', 'Category']);
+    $spreadsheetId = '你的 Google Sheet ID'; // 👈 替換成你的
+    $range = 'Sheet1!A2';
+    $values = [[$name, $sample, $score, $category]];
+    $body = new \Google_Service_Sheets_ValueRange([
+        'values' => $values
+    ]);
+    $params = ['valueInputOption' => 'USER_ENTERED'];
 
-        foreach ($rows as $r) {
-            preg_match('/sample(\d+)_compensated\.wav/', $r[1], $m);
-            $index = isset($m[1]) ? (int)$m[1] : 0;
-            $category = 'unknown';
-            foreach ($categories as $label => $range) {
-                if (in_array($index, $range)) {
-                    $category = $label;
-                    $stats[$label][] = (int)$r[2];
-                    break;
-                }
-            }
-            fputcsv($fp, [$r[0], $r[1], $r[2], $category]);
-        }
-
-        fputcsv($fp, []);
-        fputcsv($fp, ['Category', 'Count', 'Average Score']);
-        foreach ($stats as $label => $scores) {
-            $count = count($scores);
-            $avg = $count ? round(array_sum($scores) / $count, 2) : 0;
-            fputcsv($fp, [$label, $count, $avg]);
-        }
-
-        fclose($fp);
-        Yii::$app->end();
+    try {
+        $service->spreadsheets_values->append($spreadsheetId, $range, $body, $params);
+        return json_encode(['status' => 'success']);
+    } catch (Exception $e) {
+        return json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
+}
+
 
     // ✅ 後台顯示資料
     public function actionViewData()
