@@ -20,46 +20,33 @@ class SiteController extends Controller
         try {
             $data = json_decode(file_get_contents('php://input'), true);
 
-            // 寫入 debug 檔案查看前端傳來的資料
-            file_put_contents(Yii::getAlias('@app/runtime/debug_ajax.txt'), print_r($data, true));
+            // 寫入 CSV 路徑
+            $csvFile = Yii::getAlias('@app/web/results.csv');
 
-            // 🐞 DEBUG: 環境變數有沒有成功讀到
-            $jsonCreds = getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON');
-            file_put_contents(Yii::getAlias('@app/runtime/debug_env.txt'), $jsonCreds ? '✅ 環境變數已讀取' : '❌ 環境變數為空');
+            // 若檔案不存在，先寫表頭
+            $writeHeader = !file_exists($csvFile);
+            $file = fopen($csvFile, 'a');
 
-            if (!isset($data['name'], $data['sample'], $data['score'], $data['category'])) {
-                throw new \Exception("資料不完整");
+            if ($writeHeader) {
+                fputcsv($file, ['Name', 'Sample', 'Score', 'Timestamp']);
             }
 
-            if (!$jsonCreds) {
-                throw new \Exception("GOOGLE_APPLICATION_CREDENTIALS_JSON 環境變數未設定");
-            }
+            // 寫入資料
+            fputcsv($file, [
+                $data['name'] ?? '',
+                $data['sample'] ?? '',
+                $data['score'] ?? '',
+                date('Y-m-d H:i:s')
+            ]);
 
-            $client = new \Google_Client();
-            $client->setAuthConfig(json_decode($jsonCreds, true));
-            $client->addScope(\Google_Service_Sheets::SPREADSHEETS);
-            $service = new \Google_Service_Sheets($client);
-
-            $spreadsheetId = '1KoD90ls7hdtgFGzRc29Vhch557jOMRd4UjkftG3go3w';
-            $range = 'A2:D';
-            $values = [[$data['name'], $data['sample'], $data['score'], $data['category']]];
-            $body = new \Google_Service_Sheets_ValueRange(['values' => $values]);
-
-            $params = ['valueInputOption' => 'RAW'];
-            $result = $service->spreadsheets_values->append($spreadsheetId, $range, $body, $params);
-
-            // 可寫入 Google 回傳內容進一步除錯
-            file_put_contents(Yii::getAlias('@app/runtime/google_result.txt'), print_r($result, true));
+            fclose($file);
 
             return ['status' => 'success'];
         } catch (\Exception $e) {
-            return [
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ];
+            return ['status' => 'error', 'message' => $e->getMessage()];
         }
     }
+
 
     // ✅ 匯出 CSV 檔案
     public function actionExportCsv()
