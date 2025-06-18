@@ -2,8 +2,9 @@
 
 return [
     'class' => 'yii\db\Connection',
-    'dsn' => 'mysql:host=localhost;dbname=packetloss_db', // ← 這裡換成你剛建立的資料庫名稱
-    'username' => 'root',      // ← XAMPP 預設帳號
-    'password' => '',          // ← XAMPP 預設密碼為空字串
-    'charset' => 'utf8',
+    'dsn' => 'mysql:host=localhost;dbname=your_db_name',
+    'username' => 'your_db_user',
+    'password' => 'your_db_password',
+    'charset' => 'utf8mb4',
 ];
+

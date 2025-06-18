@@ -16,89 +16,82 @@ class SiteController extends Controller
 
     // ✅ 儲存到 MySQL
     public function actionAjaxSubmit()
-    {
-        Yii::$app->response->format = Response::FORMAT_JSON;
+{
+    Yii::$app->response->format = Response::FORMAT_JSON;
+    $data = json_decode(file_get_contents('php://input'), true);
 
-        $data = json_decode(file_get_contents('php://input'), true);
+    if (!isset($data['name'], $data['sample'], $data['score'])) {
+        return ['status' => 'error', 'message' => '缺少欄位'];
+    }
 
-        if (!isset($data['name'], $data['sample'], $data['score'])) {
-            return ['status' => 'error', 'message' => '缺少欄位'];
-        }
+    Yii::$app->db->createCommand()->insert('mos_result', [
+        'name' => $data['name'],
+        'sample' => $data['sample'],
+        'score' => $data['score'],
+    ])->execute();
 
-        $model = new MosResult();
-        $model->name = $data['name'];
-        $model->sample = $data['sample'];
-        $model->score = (int)$data['score'];
-
-        if ($model->save()) {
-            return ['status' => 'ok'];
-        } else {
-            return ['status' => 'error', 'message' => $model->errors];
-        }
+    return ['status' => 'ok'];
+ }
+    
     }
 
     // ✅ 匯出 MySQL 裡的資料為 CSV，含分類與統計
     public function actionExportCsv()
-    {
-        $filename = 'mos_results.csv';
+{
+    $filename = 'mos_results.csv';
 
-        $categories = [
-            'clean'     => range(1, 31),
-            'noisy'     => range(32, 58),
-            'pwn'       => range(59, 85),
-            'pwn_ses'   => range(86, 113),
-            'fcn'       => range(114, 141),
-        ];
+    $rows = Yii::$app->db->createCommand('SELECT * FROM mos_result ORDER BY id ASC')->queryAll();
 
-        $stats = [
-            'clean' => [],
-            'noisy' => [],
-            'pwn' => [],
-            'pwn_ses' => [],
-            'fcn' => [],
-        ];
+    // 題目分類
+    $categories = [
+        'clean'     => range(1, 31),
+        'noisy'     => range(32, 58),
+        'pwn'       => range(59, 85),
+        'pwn_ses'   => range(86, 113),
+        'fcn'       => range(114, 141),
+    ];
 
-        header('Content-Type: text/csv; charset=utf-8');
-        header("Content-Disposition: attachment; filename=\"$filename\"");
+    $stats = [
+        'clean' => [],
+        'noisy' => [],
+        'pwn' => [],
+        'pwn_ses' => [],
+        'fcn' => [],
+    ];
 
-        $fp = fopen('php://output', 'w');
-        fputcsv($fp, ['User Name', 'Sample', 'Score', 'Category']);
+    header('Content-Type: text/csv; charset=utf-8');
+    header("Content-Disposition: attachment; filename=\"$filename\"");
 
-        $results = MosResult::find()->orderBy('id')->all();
+    $fp = fopen('php://output', 'w');
+    fputcsv($fp, ['Name', 'Sample', 'Score', 'Category']);
 
-        foreach ($results as $r) {
-            $sampleName = $r->sample;
-            preg_match('/sample(\d+)_compensated\.wav/', $sampleName, $matches);
-            $sampleIndex = isset($matches[1]) ? (int)$matches[1] : 0;
-            $category = 'unknown';
+    foreach ($rows as $r) {
+        preg_match('/sample(\d+)_compensated\.wav/', $r['sample'], $m);
+        $index = isset($m[1]) ? (int)$m[1] : 0;
+        $category = 'unknown';
 
-            foreach ($categories as $label => $range) {
-                if (in_array($sampleIndex, $range)) {
-                    $category = $label;
-                    $stats[$label][] = (int)$r->score;
-                    break;
-                }
+        foreach ($categories as $label => $range) {
+            if (in_array($index, $range)) {
+                $category = $label;
+                $stats[$label][] = (int)$r['score'];
+                break;
             }
-
-            fputcsv($fp, [
-                $r->name,
-                $sampleName,
-                $r->score,
-                $category
-            ]);
         }
 
-        // 加上統計
-        fputcsv($fp, []);
-        fputcsv($fp, ['Category', 'Count', 'Average Score']);
-
-        foreach ($stats as $label => $scores) {
-            $count = count($scores);
-            $avg = $count > 0 ? round(array_sum($scores) / $count, 2) : 0;
-            fputcsv($fp, [$label, $count, $avg]);
-        }
-
-        fclose($fp);
-        Yii::$app->end();
+        fputcsv($fp, [$r['name'], $r['sample'], $r['score'], $category]);
     }
+
+    fputcsv($fp, []);
+    fputcsv($fp, ['Category', 'Count', 'Average Score']);
+
+    foreach ($stats as $label => $scores) {
+        $count = count($scores);
+        $avg = $count ? round(array_sum($scores) / $count, 2) : 0;
+        fputcsv($fp, [$label, $count, $avg]);
+    }
+
+    fclose($fp);
+    Yii::$app->end();
 }
+
+
