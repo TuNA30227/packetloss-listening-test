@@ -38,31 +38,33 @@ echo "<!-- PHP is working -->";
     <br>
     <button type="button" id="replay-button">🔁 重播</button>
 
-    <form id="mos-form">
+    <div id="mos-form-container">
         <label>請選擇分數：</label><br>
-        <?php for ($i = 1; $i <= 5; $i++) { ?>
-            <label><input type="radio" name="score" value="<?php echo $i; ?>"> <?php echo $i; ?></label>
-        <?php } ?>
+        <?php for ($i = 1; $i <= 5; $i++): ?>
+            <label><input type="radio" name="score" value="<?= $i ?>"> <?= $i ?></label>
+        <?php endfor; ?>
         <br><br>
         <button type="button" id="prev-button" disabled>上一題</button>
-        <button type="submit">下一題</button>
-    </form>
+        <button type="button" id="next-button">下一題</button>
+    </div>
 </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const audioList = Array.from({ length: 135 }, (_, i) => `sample${i + 1}_compensated.wav`).sort(() => Math.random() - 0.5).slice(0, 5);
+    const audioList = Array.from({ length: 135 }, (_, i) => `sample${i + 1}_compensated.wav`)
+                            .sort(() => Math.random() - 0.5)
+                            .slice(0, 5);
     let currentIndex = 0;
     let userName = '';
-    let answers = Array(135).fill(null);
+    let answers = new Array(audioList.length).fill(null);
 
     function getCategory(sampleName) {
-        const index = parseInt(sampleName.match(/\d+/)[0]);
+        const index = parseInt(sampleName.match(/\d+/)[0], 10);
         if (index <= 27) return 'clean';
-        else if (index <= 54) return 'noisy';
-        else if (index <= 81) return 'PWN';
-        else if (index <= 108) return 'PWN+SES';
-        else return 'FCN';
+        if (index <= 54) return 'noisy';
+        if (index <= 81) return 'pwn';
+        if (index <= 108) return 'pwn_ses';
+        return 'fcn';
     }
 
     function updateQuestionDisplay() {
@@ -74,11 +76,11 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('prev-button').disabled = currentIndex === 0;
 
         const score = answers[currentIndex];
-        document.querySelectorAll('input[name="score"]').forEach(r => {
-            r.checked = (r.value == score);
+        document.querySelectorAll('input[name="score"]').forEach(radio => {
+            radio.checked = (radio.value == score);
         });
 
-        document.getElementById('mos-form').scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('mos-form-container').scrollIntoView({ behavior: 'smooth' });
     }
 
     document.getElementById('start-form').addEventListener('submit', function (e) {
@@ -90,30 +92,39 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         userName = nameInput.value.trim();
         document.getElementById('start-form').style.display = 'none';
-        document.getElementById('test-area').style.display = 'block';
         updateQuestionDisplay();
     });
 
-    document.getElementById('mos-form').addEventListener('submit', function (e) {
-        e.preventDefault();
+    async function submitAnswer() {
         const score = document.querySelector('input[name="score"]:checked');
         if (!score) {
             alert("請先選擇一個分數！");
-            return;
+            return false;
         }
 
         answers[currentIndex] = score.value;
 
-        fetch('/index.php?r=site/ajax-submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name: userName,
-                sample: audioList[currentIndex],
-                score: score.value,
-                category: getCategory(audioList[currentIndex])
-            })
-        });
+        try {
+            await fetch('/index.php?r=site/ajax-submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: userName,
+                    sample: audioList[currentIndex],
+                    score: score.value,
+                    category: getCategory(audioList[currentIndex])
+                })
+            });
+            return true;
+        } catch (error) {
+            alert('送出失敗，請稍後再試。');
+            return false;
+        }
+    }
+
+    document.getElementById('next-button').addEventListener('click', async function () {
+        const ok = await submitAnswer();
+        if (!ok) return;
 
         currentIndex++;
         if (currentIndex < audioList.length) {

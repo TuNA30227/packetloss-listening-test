@@ -14,45 +14,57 @@ class SiteController extends Controller
     }
 
     // ✅ 寫入 Google Sheets（用於 AJAX 問卷送出）
+
     public function actionAjaxSubmit()
-    {
-        Yii::$app->response->format = Response::FORMAT_JSON;
-        $data = json_decode(file_get_contents('php://input'), true);
+{
+    Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+    $data = json_decode(file_get_contents('php://input'), true);
 
-        if (!isset($data['name'], $data['sample'], $data['score'], $data['category'])) {
-            return ['status' => 'error', 'message' => 'Missing fields'];
-        }
-
-        $name = $data['name'];
-        $sample = $data['sample'];
-        $score = $data['score'];
-        $category = $data['category'];
-
-        require_once __DIR__ . '/../vendor/autoload.php';
-
-        $client = new \Google_Client();
-        $client->setApplicationName('MOS Listening Form');
-        $client->setScopes([\Google_Service_Sheets::SPREADSHEETS]);
-        $client->setAuthConfig(__DIR__ . '/../credentials.json'); // 請依實際放置路徑調整
-        $client->setAccessType('offline');
-
-        $service = new \Google_Service_Sheets($client);
-        $spreadsheetId = '1KoD90ls7hdtgFGzRc29Vhch557jOMRd4UjkftG3go3w'; // 請填入你的試算表 ID
-        $range = 'Sheet1!A2';
-
-        $values = [[$name, $sample, $score, $category]];
-        $body = new \Google_Service_Sheets_ValueRange([
-            'values' => $values
-        ]);
-        $params = ['valueInputOption' => 'USER_ENTERED'];
-
-        try {
-            $service->spreadsheets_values->append($spreadsheetId, $range, $body, $params);
-            return ['status' => 'ok'];
-        } catch (\Exception $e) {
-            return ['status' => 'error', 'message' => $e->getMessage()];
-        }
+    if (!isset($data['name'], $data['sample'], $data['score'], $data['category'])) {
+        return ['status' => 'error', 'message' => 'Missing fields'];
     }
+
+    $name = $data['name'];
+    $sample = $data['sample'];
+    $score = $data['score'];
+    $category = $data['category'];
+
+    require_once __DIR__ . '/../vendor/autoload.php';
+
+    // 1. 從環境變數取得 JSON 字串
+    $jsonCreds = getenv('GOOGLE_CREDENTIALS');
+    if ($jsonCreds === false) {
+        return ['status' => 'error', 'message' => 'Google credentials missing'];
+    }
+
+    // 2. 寫成暫存檔案
+    $credPath = sys_get_temp_dir() . '/credentials.json';
+    file_put_contents($credPath, $jsonCreds);
+
+    $client = new \Google_Client();
+    $client->setApplicationName('MOS Listening Form');
+    $client->setScopes([\Google_Service_Sheets::SPREADSHEETS]);
+    $client->setAuthConfig($credPath);
+    $client->setAccessType('offline');
+
+    $service = new \Google_Service_Sheets($client);
+    $spreadsheetId = '你的試算表ID';
+    $range = 'Sheet1!A2';
+
+    $values = [[$name, $sample, $score, $category]];
+    $body = new \Google_Service_Sheets_ValueRange([
+        'values' => $values
+    ]);
+    $params = ['valueInputOption' => 'USER_ENTERED'];
+
+    try {
+        $service->spreadsheets_values->append($spreadsheetId, $range, $body, $params);
+        return ['status' => 'ok'];
+    } catch (\Exception $e) {
+        return ['status' => 'error', 'message' => $e->getMessage()];
+    }
+}
+
 
     // ✅ 匯出 CSV 檔案（本地備用匯出報表）
     public function actionExportCsv()
@@ -173,35 +185,47 @@ class SiteController extends Controller
 
     // ✅ 非 AJAX 的表單提交（後備）
     public function actionSubmit()
-    {
-        $name = $_POST['name'] ?? '';
-        $sample = $_POST['sample'] ?? '';
-        $score = $_POST['score'] ?? '';
-        $category = $_POST['category'] ?? '';
+{
+    $name = $_POST['name'] ?? '';
+    $sample = $_POST['sample'] ?? '';
+    $score = $_POST['score'] ?? '';
+    $category = $_POST['category'] ?? '';
 
-        require_once __DIR__ . '/../vendor/autoload.php';
+    require_once __DIR__ . '/../vendor/autoload.php';
 
-        $client = new \Google_Client();
-        $client->setApplicationName('MOS Listening Form');
-        $client->setScopes([\Google_Service_Sheets::SPREADSHEETS]);
-        $client->setAuthConfig(__DIR__ . '/../credentials.json');
-        $client->setAccessType('offline');
-
-        $service = new \Google_Service_Sheets($client);
-        $spreadsheetId = '1KoD90ls7hdtgFGzRc29Vhch557jOMRd4UjkftG3go3w';
-        $range = 'Sheet1!A2';
-
-        $values = [[$name, $sample, $score, $category]];
-        $body = new \Google_Service_Sheets_ValueRange([
-            'values' => $values
-        ]);
-        $params = ['valueInputOption' => 'USER_ENTERED'];
-
-        try {
-            $service->spreadsheets_values->append($spreadsheetId, $range, $body, $params);
-            echo "<h2>✅ 感謝您的填寫！資料已寫入 Google Sheet。</h2>";
-        } catch (\Exception $e) {
-            echo "<h2>❌ 發生錯誤：" . htmlspecialchars($e->getMessage()) . "</h2>";
-        }
+    // 從環境變數取得 JSON 字串
+    $jsonCreds = getenv('GOOGLE_CREDENTIALS');
+    if ($jsonCreds === false) {
+        echo "<h2>❌ Google credentials missing</h2>";
+        return;
     }
+
+    // 寫成暫存檔案
+    $credPath = sys_get_temp_dir() . '/credentials.json';
+    file_put_contents($credPath, $jsonCreds);
+
+    $client = new \Google_Client();
+    $client->setApplicationName('MOS Listening Form');
+    $client->setScopes([\Google_Service_Sheets::SPREADSHEETS]);
+    $client->setAuthConfig($credPath);
+    $client->setAccessType('offline');
+
+    $service = new \Google_Service_Sheets($client);
+    $spreadsheetId = '你的試算表ID';  // 確認填入正確ID
+    $range = 'Sheet1!A2';
+
+    $values = [[$name, $sample, $score, $category]];
+    $body = new \Google_Service_Sheets_ValueRange([
+        'values' => $values
+    ]);
+    $params = ['valueInputOption' => 'USER_ENTERED'];
+
+    try {
+        $service->spreadsheets_values->append($spreadsheetId, $range, $body, $params);
+        echo "<h2>✅ 感謝您的填寫！資料已寫入 Google Sheet。</h2>";
+    } catch (\Exception $e) {
+        echo "<h2>❌ 發生錯誤：" . htmlspecialchars($e->getMessage()) . "</h2>";
+    }
+}
+
 }
