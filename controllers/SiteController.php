@@ -152,4 +152,43 @@ class SiteController extends Controller
             'stats' => $summary,
         ]);
     }
+    public function actionSubmit()
+{
+    $name = $_POST['name'] ?? '';
+    $sample = $_POST['sample'] ?? '';
+    $score = $_POST['score'] ?? '';
+    $category = $_POST['category'] ?? '';
+
+    // 載入 Google API 套件
+    require_once __DIR__ . '/../vendor/autoload.php';
+
+    $client = new \Google_Client();
+    $client->setApplicationName('MOS Listening Form');
+    $client->setScopes([\Google_Service_Sheets::SPREADSHEETS]);
+    $client->setAuthConfig(__DIR__ . '/../credentials.json'); // 如果你放在根目錄下請調整路徑
+    $client->setAccessType('offline');
+
+    $service = new \Google_Service_Sheets($client);
+
+    // 試算表 ID（從網址中複製）
+    $spreadsheetId = '1KoD90ls7hdtgFGzRc29Vhch557jOMRd4UjkftG3go3w'; // 例如：1abcD2efG3hIJKlmNOPQRstuVWXYZ45678xxx
+    $range = 'Sheet1!A2'; // 將資料插入 Sheet1，自 A2 起
+
+    // 寫入資料陣列
+    $values = [[$name, $sample, $score, $category]];
+    $body = new \Google_Service_Sheets_ValueRange([
+        'values' => $values
+    ]);
+    $params = [
+        'valueInputOption' => 'USER_ENTERED'
+    ];
+
+    try {
+        $result = $service->spreadsheets_values->append($spreadsheetId, $range, $body, $params);
+        echo "<h2>✅ 感謝您的填寫！資料已寫入 Google Sheet。</h2>";
+    } catch (Exception $e) {
+        echo "<h2>❌ 發生錯誤：" . htmlspecialchars($e->getMessage()) . "</h2>";
+    }
+}
+
 }
