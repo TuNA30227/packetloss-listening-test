@@ -1,29 +1,36 @@
 FROM php:8.1-apache
 
-# 安裝 PHP 擴充與系統套件
+# 安裝必要套件
 RUN apt-get update && apt-get install -y \
-    unzip git curl libzip-dev zip libpng-dev libonig-dev libxml2-dev \
-    && docker-php-ext-install pdo pdo_mysql zip
+    unzip \
+    git \
+    libzip-dev \
+    libonig-dev \
+    zip \
+    libpng-dev \
+    libxml2-dev \
+    && docker-php-ext-install pdo_mysql zip mbstring
 
-# 啟用 Apache rewrite 模組
+# 啟用 Apache rewrite module
 RUN a2enmod rewrite
 
-# 複製專案原始碼
-COPY . /var/www/html/
+# 將本地檔案複製到容器內
+COPY . /var/www/html
 
-# ✅ 修正權限問題
-RUN chown -R www-data:www-data /var/www/html && chmod -R 755 /var/www/html
+# 設定正確權限（assets 與 runtime）
+RUN mkdir -p /var/www/html/web/assets /var/www/html/runtime \
+ && chmod -R 777 /var/www/html/web/assets /var/www/html/runtime
 
-# 切換到專案資料夾
+# 設定工作目錄
 WORKDIR /var/www/html
 
-# ✅ 安裝 Composer
-RUN curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
+# composer 安裝
+COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
+RUN composer install --no-interaction --prefer-dist
 
-# ✅ 安裝 composer 套件（最重要這一行不能漏）
-RUN composer install --no-interaction --no-progress --no-suggest
-
-# 設定 Apache 的 web root 指向 Yii2 的 web 資料夾
-RUN sed -i 's|/var/www/html|/var/www/html/web|g' /etc/apache2/sites-available/000-default.conf
+# 設定 Apache 預設首頁到 Yii2 的入口
+ENV APACHE_DOCUMENT_ROOT /var/www/html/web
+RUN sed -ri -e 's!/var/www/html!/var/www/html/web!g' /etc/apache2/sites-available/000-default.conf
 
 EXPOSE 80
+CMD ["apache2-foreground"]
