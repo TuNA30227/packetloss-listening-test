@@ -80,8 +80,8 @@ body {
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const audioList = Array.from({ length: 135 }, (_, i) => `sample${i + 1}_compensated.wav`)
-                            .sort(() => Math.random() - 0.5)
-                            .slice(0, 5);
+                            .sort(() => Math.random() - 0.5);
+                            // .slice(0, 5);
     let currentIndex = 0;
     let userName = '';
     let answers = new Array(audioList.length).fill(null);
