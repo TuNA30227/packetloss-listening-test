@@ -96,7 +96,8 @@ class SiteController extends Controller
 
         $timestamp = date('Y-m-d H:i:s');
         $filenameTime = date('Ymd_His');
-        $safeName = preg_replace('/[^a-zA-Z0-9_]/u', '_', $name);
+        $safeName = iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", $name);
+        $safeName = preg_replace('/[^a-zA-Z0-9_]/', '_', $safeName);
         $csvDir = Yii::getAlias('@app/web/results/');
         $csvFile = $csvDir . $safeName . '_' . $filenameTime . '.csv';
 
