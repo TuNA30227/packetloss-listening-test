@@ -1,11 +1,14 @@
 <?php
-
 use yii\helpers\Html;
-
 ?>
 
+<h1>問卷結果管理後台</h1>
+
 <h2>🗂 所有問卷紀錄</h2>
-<table border="1" cellpadding="6" cellspacing="0">
+<?php if (empty($results)): ?>
+    <p>目前無資料。</p>
+<?php else: ?>
+<table class="table table-bordered" border="1" cellpadding="6" cellspacing="0">
     <thead>
         <tr>
             <th>#</th>
@@ -27,9 +30,13 @@ use yii\helpers\Html;
     <?php endforeach; ?>
     </tbody>
 </table>
+<?php endif; ?>
 
 <h3>📊 類別統計</h3>
-<table border="1" cellpadding="6" cellspacing="0">
+<?php if (empty($stats)): ?>
+    <p>無統計資料。</p>
+<?php else: ?>
+<table class="table table-bordered" border="1" cellpadding="6" cellspacing="0">
     <thead>
         <tr><th>Category</th><th>Count</th><th>Average Score</th></tr>
     </thead>
@@ -43,3 +50,4 @@ use yii\helpers\Html;
     <?php endforeach; ?>
     </tbody>
 </table>
+<?php endif; ?>

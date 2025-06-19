@@ -31,3 +31,13 @@ tests/_support/_generated
 
 #vagrant folder
 /.vagrant
+
+# Yii runtime & asset folders
+/runtime/
+/web/assets/
+
+# MOS listening results (個人化CSV)
+web/results/
+
+# Google credentials file (不要上傳)
+credentials.json

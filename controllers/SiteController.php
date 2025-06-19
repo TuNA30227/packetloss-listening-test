@@ -10,9 +10,52 @@ class SiteController extends Controller
 {
     public function actionIndex()
     {
-        return $this->render('index');
+        $csvFile = Yii::getAlias('@app/web/results.csv');
+        $scores = [];
+
+        if (file_exists($csvFile)) {
+            $methods = [
+                'Clean'     => range(1, 27),
+                'Noisy'     => range(28, 54),
+                'PWN'       => range(55, 81),
+                'PWN+SES'   => range(82, 108),
+                'FCN'       => range(109, 135),
+            ];
+
+            $data = array_map('str_getcsv', file($csvFile));
+            unset($data[0]); // 移除表頭
+
+            foreach ($methods as $method => $range) {
+                $scores[$method] = ['sum' => 0, 'count' => 0];
+            }
+
+            foreach ($data as $row) {
+                if (count($row) < 3) continue;
+
+                $sampleName = $row[1];
+                $score = floatval($row[2]);
+
+                if (preg_match('/sample(\d+)_/', $sampleName, $match)) {
+                    $sampleNum = intval($match[1]);
+                    foreach ($methods as $method => $range) {
+                        if (in_array($sampleNum, $range)) {
+                            $scores[$method]['sum'] += $score;
+                            $scores[$method]['count']++;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            foreach ($scores as $method => &$info) {
+                $info['avg'] = $info['count'] > 0 ? round($info['sum'] / $info['count'], 2) : '-';
+            }
+        }
+
+        return $this->render('index', ['scores' => $scores]);
     }
 
+<<<<<<< HEAD
     // ✅ 寫入 Google Sheets（用於 AJAX 問卷送出）
 
     public function actionAjaxSubmit()
@@ -67,6 +110,69 @@ class SiteController extends Controller
 
 
     // ✅ 匯出 CSV 檔案（本地備用匯出報表）
+=======
+    public function actionSubmitCsv()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $data = json_decode(file_get_contents('php://input'), true);
+        $name = trim($data['name'] ?? 'anonymous');
+        $scores = $data['scores'] ?? [];
+
+        $categories = [
+            'Clean'     => range(1, 27),
+            'Noisy'     => range(28, 54),
+            'PWN'       => range(55, 81),
+            'PWN+SES'   => range(82, 108),
+            'FCN'       => range(109, 135)
+        ];
+
+        $categoryScores = [];
+        foreach ($categories as $cat => $_) {
+            $categoryScores[$cat] = [];
+        }
+
+        foreach ($scores as $item) {
+            preg_match('/sample(\d+)_/', $item['sample'], $matches);
+            if ($matches) {
+                $index = (int)$matches[1];
+                foreach ($categories as $cat => $range) {
+                    if (in_array($index, $range)) {
+                        $categoryScores[$cat][] = (int)$item['score'];
+                        break;
+                    }
+                }
+            }
+        }
+
+        $averages = [];
+        foreach ($categoryScores as $cat => $list) {
+            $averages[$cat] = count($list) > 0 ? round(array_sum($list) / count($list), 2) : 0;
+        }
+
+        $timestamp = date('Y-m-d H:i:s');
+        $filenameTime = date('Ymd_His');
+        $safeName = preg_replace('/[^a-zA-Z0-9_]/u', '_', $name);
+        $csvDir = Yii::getAlias('@app/web/results/');
+        $csvFile = $csvDir . $safeName . '_' . $filenameTime . '.csv';
+
+        if (!file_exists($csvDir)) {
+            mkdir($csvDir, 0777, true);
+        }
+
+        $fp = fopen($csvFile, 'w');
+        fputcsv($fp, ['Name', 'Clean', 'Noisy', 'PWN', 'PWN+SES', 'FCN', 'Timestamp']);
+        fputcsv($fp, array_merge([$name], array_values($averages), [$timestamp]));
+        fclose($fp);
+
+        return [
+            'status' => 'success',
+            'message' => 'CSV 已儲存',
+            'file' => '/results/' . basename($csvFile),
+        ];
+    }
+
+>>>>>>> clean-main
     public function actionExportCsv()
     {
         $sourceFile = Yii::getAlias('@app/data/mos_results.csv');
@@ -75,7 +181,7 @@ class SiteController extends Controller
         }
 
         $rows = array_map('str_getcsv', file($sourceFile));
-        $headers = array_shift($rows); // name, sample, score
+        $headers = array_shift($rows);
 
         $categories = [
             'clean'     => range(1, 31),
@@ -120,15 +226,11 @@ class SiteController extends Controller
         Yii::$app->end();
     }
 
-    // ✅ 後台統計頁顯示資料
     public function actionViewData()
     {
         $csvFile = Yii::getAlias('@app/data/mos_results.csv');
         if (!file_exists($csvFile)) {
-            return $this->render('view-data', [
-                'results' => [],
-                'stats' => [],
-            ]);
+            return $this->render('view-data', ['results' => [], 'stats' => []]);
         }
 
         $rows = array_map('str_getcsv', file($csvFile));
@@ -143,8 +245,8 @@ class SiteController extends Controller
         ];
 
         $stats = ['clean'=>[], 'noisy'=>[], 'pwn'=>[], 'pwn_ses'=>[], 'fcn'=>[]];
-
         $results = [];
+
         foreach ($rows as $r) {
             $name = $r[0] ?? '';
             $sample = $r[1] ?? '';
@@ -183,7 +285,6 @@ class SiteController extends Controller
         ]);
     }
 
-    // ✅ 非 AJAX 的表單提交（後備）
     public function actionSubmit()
 {
     $name = $_POST['name'] ?? '';
@@ -193,22 +294,45 @@ class SiteController extends Controller
 
     require_once __DIR__ . '/../vendor/autoload.php';
 
+<<<<<<< HEAD
     // 從環境變數取得 JSON 字串
     $jsonCreds = getenv('GOOGLE_CREDENTIALS');
     if ($jsonCreds === false) {
         echo "<h2>❌ Google credentials missing</h2>";
         return;
     }
+=======
+        $jsonCreds = getenv('GOOGLE_CREDENTIALS');
+        if ($jsonCreds === false) {
+            echo "<h2>❌ Google credentials missing</h2>";
+            return;
+        }
+
+        $credPath = sys_get_temp_dir() . '/credentials.json';
+        file_put_contents($credPath, $jsonCreds);
+
+        $client = new \Google_Client();
+        $client->setApplicationName('MOS Listening Form');
+        $client->setScopes([\Google_Service_Sheets::SPREADSHEETS]);
+        $client->setAuthConfig($credPath);
+        $client->setAccessType('offline');
+>>>>>>> clean-main
 
     // 寫成暫存檔案
     $credPath = sys_get_temp_dir() . '/credentials.json';
     file_put_contents($credPath, $jsonCreds);
 
+<<<<<<< HEAD
     $client = new \Google_Client();
     $client->setApplicationName('MOS Listening Form');
     $client->setScopes([\Google_Service_Sheets::SPREADSHEETS]);
     $client->setAuthConfig($credPath);
     $client->setAccessType('offline');
+=======
+        $values = [[$name, $sample, $score, $category]];
+        $body = new \Google_Service_Sheets_ValueRange(['values' => $values]);
+        $params = ['valueInputOption' => 'USER_ENTERED'];
+>>>>>>> clean-main
 
     $service = new \Google_Service_Sheets($client);
     $spreadsheetId = '1pPZyPkN3EVFlj4-7aDUkb402By6h_-fm4-sR-2RhACU';  // 確認填入正確ID
