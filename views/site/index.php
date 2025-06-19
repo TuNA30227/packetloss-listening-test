@@ -49,6 +49,25 @@ echo "<!-- PHP is working -->";
     </div>
 </div>
 
+<div id="download-area" style="display:none; margin-top: 30px;"></div>
+
+<style>
+.btn-download {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    font-size: 16px;
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    margin-top: 10px;
+}
+.btn-download:hover {
+    background-color: #45a049;
+}
+</style>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const audioList = Array.from({ length: 135 }, (_, i) => `sample${i + 1}_compensated.wav`)
@@ -130,7 +149,37 @@ document.addEventListener("DOMContentLoaded", function () {
         if (currentIndex < audioList.length) {
             updateQuestionDisplay();
         } else {
-            document.body.innerHTML = "<h2>✅ 感謝您的填寫！</h2>";
+            // 問卷結束，送出整份答案產生個人 CSV
+            const payload = {
+                name: userName,
+                scores: audioList.map((sample, i) => ({
+                    sample: sample,
+                    score: answers[i]
+                }))
+            };
+
+            fetch('/index.php?r=site/submit-csv', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                const downloadDiv = document.getElementById('download-area');
+                downloadDiv.style.display = 'block';
+                downloadDiv.innerHTML = `
+                    <h2>✅ 問卷完成，感謝您的填寫！</h2>
+                    <p>請點擊下方按鈕下載您的結果：</p>
+                    <a href="${data.file}" download class="btn-download">
+                        📥 下載您的 CSV 結果
+                    </a>
+                `;
+            })
+            .catch(() => {
+                alert("❌ 發生錯誤，請稍後再試");
+            });
+
+            document.getElementById('test-area').style.display = 'none';
         }
     });
 

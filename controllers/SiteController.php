@@ -13,53 +13,109 @@ class SiteController extends Controller
         $csvFile = Yii::getAlias('@app/web/results.csv');
         $scores = [];
 
-    if (file_exists($csvFile)) {
-        $methods = [
+        if (file_exists($csvFile)) {
+            $methods = [
+                'Clean'     => range(1, 27),
+                'Noisy'     => range(28, 54),
+                'PWN'       => range(55, 81),
+                'PWN+SES'   => range(82, 108),
+                'FCN'       => range(109, 135),
+            ];
+
+            $data = array_map('str_getcsv', file($csvFile));
+            unset($data[0]); // 移除表頭
+
+            foreach ($methods as $method => $range) {
+                $scores[$method] = ['sum' => 0, 'count' => 0];
+            }
+
+            foreach ($data as $row) {
+                if (count($row) < 3) continue;
+
+                $sampleName = $row[1];
+                $score = floatval($row[2]);
+
+                if (preg_match('/sample(\d+)_/', $sampleName, $match)) {
+                    $sampleNum = intval($match[1]);
+                    foreach ($methods as $method => $range) {
+                        if (in_array($sampleNum, $range)) {
+                            $scores[$method]['sum'] += $score;
+                            $scores[$method]['count']++;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            foreach ($scores as $method => &$info) {
+                $info['avg'] = $info['count'] > 0 ? round($info['sum'] / $info['count'], 2) : '-';
+            }
+        }
+
+        return $this->render('index', ['scores' => $scores]);
+    }
+
+    public function actionSubmitCsv()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $data = json_decode(file_get_contents('php://input'), true);
+        $name = trim($data['name'] ?? 'anonymous');
+        $scores = $data['scores'] ?? [];
+
+        $categories = [
             'Clean'     => range(1, 27),
             'Noisy'     => range(28, 54),
             'PWN'       => range(55, 81),
             'PWN+SES'   => range(82, 108),
-            'FCN'       => range(109, 135),
+            'FCN'       => range(109, 135)
         ];
 
-        $data = array_map('str_getcsv', file($csvFile));
-        unset($data[0]); // 移除表頭
-
-        foreach ($methods as $method => $range) {
-            $scores[$method] = ['sum' => 0, 'count' => 0];
+        $categoryScores = [];
+        foreach ($categories as $cat => $_) {
+            $categoryScores[$cat] = [];
         }
 
-        foreach ($data as $row) {
-            if (count($row) < 3) continue;
-
-            $sampleName = $row[1];
-            $score = floatval($row[2]);
-
-            if (preg_match('/sample(\d+)_/', $sampleName, $match)) {
-                $sampleNum = intval($match[1]);
-                foreach ($methods as $method => $range) {
-                    if (in_array($sampleNum, $range)) {
-                        $scores[$method]['sum'] += $score;
-                        $scores[$method]['count']++;
+        foreach ($scores as $item) {
+            preg_match('/sample(\d+)_/', $item['sample'], $matches);
+            if ($matches) {
+                $index = (int)$matches[1];
+                foreach ($categories as $cat => $range) {
+                    if (in_array($index, $range)) {
+                        $categoryScores[$cat][] = (int)$item['score'];
                         break;
                     }
                 }
             }
         }
 
-        // 計算平均
-        foreach ($scores as $method => &$info) {
-            $info['avg'] = $info['count'] > 0 ? round($info['sum'] / $info['count'], 2) : '-';
+        $averages = [];
+        foreach ($categoryScores as $cat => $list) {
+            $averages[$cat] = count($list) > 0 ? round(array_sum($list) / count($list), 2) : 0;
         }
+
+        $timestamp = date('Y-m-d H:i:s');
+        $filenameTime = date('Ymd_His');
+        $safeName = preg_replace('/[^a-zA-Z0-9_]/u', '_', $name);
+        $csvDir = Yii::getAlias('@app/web/results/');
+        $csvFile = $csvDir . $safeName . '_' . $filenameTime . '.csv';
+
+        if (!file_exists($csvDir)) {
+            mkdir($csvDir, 0777, true);
+        }
+
+        $fp = fopen($csvFile, 'w');
+        fputcsv($fp, ['Name', 'Clean', 'Noisy', 'PWN', 'PWN+SES', 'FCN', 'Timestamp']);
+        fputcsv($fp, array_merge([$name], array_values($averages), [$timestamp]));
+        fclose($fp);
+
+        return [
+            'status' => 'success',
+            'message' => 'CSV 已儲存',
+            'file' => '/results/' . basename($csvFile),
+        ];
     }
 
-    return $this->render('index', [
-        'scores' => $scores
-    ]);
- }
-
-
-    // ✅ 匯出 CSV 檔案
     public function actionExportCsv()
     {
         $sourceFile = Yii::getAlias('@app/data/mos_results.csv');
@@ -113,15 +169,11 @@ class SiteController extends Controller
         Yii::$app->end();
     }
 
-    // ✅ 顯示後台統計資料
     public function actionViewData()
     {
         $csvFile = Yii::getAlias('@app/data/mos_results.csv');
         if (!file_exists($csvFile)) {
-            return $this->render('view-data', [
-                'results' => [],
-                'stats' => [],
-            ]);
+            return $this->render('view-data', ['results' => [], 'stats' => []]);
         }
 
         $rows = array_map('str_getcsv', file($csvFile));
@@ -136,8 +188,8 @@ class SiteController extends Controller
         ];
 
         $stats = ['clean'=>[], 'noisy'=>[], 'pwn'=>[], 'pwn_ses'=>[], 'fcn'=>[]];
-
         $results = [];
+
         foreach ($rows as $r) {
             $name = $r[0] ?? '';
             $sample = $r[1] ?? '';
@@ -176,7 +228,6 @@ class SiteController extends Controller
         ]);
     }
 
-    // ✅ 備用非 AJAX 提交寫入 Google Sheet
     public function actionSubmit()
     {
         $name = $_POST['name'] ?? '';
