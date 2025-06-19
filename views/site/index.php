@@ -1,7 +1,13 @@
 <?php
 use yii\helpers\Url;
-echo "<!-- PHP is working -->";
 ?>
+
+<style>
+/* 修正 navbar 蓋住內容 */
+body {
+  padding-top: 70px;
+}
+</style>
 
 <h2>語音品質聽測說明</h2>
 <p>請依照您聽到的語音品質，選擇最符合的評分：</p>
@@ -16,7 +22,9 @@ echo "<!-- PHP is working -->";
 <h3>🔊 示範音檔（5分品質）</h3>
 <audio controls>
   <source src="/audio/sample_demo_5.wav" type="audio/wav">
+  您的瀏覽器不支援音訊播放。
 </audio>
+
 <br><br>
 
 <form id="start-form">
@@ -24,6 +32,7 @@ echo "<!-- PHP is working -->";
     <input type="text" id="username" required><br><br>
     <button type="submit">開始正式測驗</button>
 </form>
+
 
 <div id="test-area" style="display:none;">
     <p id="sample-label">第 1 / 135 題</p>
