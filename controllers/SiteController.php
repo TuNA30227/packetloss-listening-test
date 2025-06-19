@@ -239,45 +239,18 @@ class SiteController extends Controller
 
     require_once __DIR__ . '/../vendor/autoload.php';
 
-<<<<<<< HEAD
-    // 從環境變數取得 JSON 字串
-    $jsonCreds = getenv('GOOGLE_CREDENTIALS');
-    if ($jsonCreds === false) {
-        echo "<h2>❌ Google credentials missing</h2>";
-        return;
-    }
-=======
-        $jsonCreds = getenv('GOOGLE_CREDENTIALS');
-        if ($jsonCreds === false) {
-            echo "<h2>❌ Google credentials missing</h2>";
-            return;
-        }
 
-        $credPath = sys_get_temp_dir() . '/credentials.json';
-        file_put_contents($credPath, $jsonCreds);
-
-        $client = new \Google_Client();
-        $client->setApplicationName('MOS Listening Form');
-        $client->setScopes([\Google_Service_Sheets::SPREADSHEETS]);
-        $client->setAuthConfig($credPath);
-        $client->setAccessType('offline');
->>>>>>> clean-main
+ clean-main
 
     // 寫成暫存檔案
     $credPath = sys_get_temp_dir() . '/credentials.json';
     file_put_contents($credPath, $jsonCreds);
 
-<<<<<<< HEAD
-    $client = new \Google_Client();
-    $client->setApplicationName('MOS Listening Form');
-    $client->setScopes([\Google_Service_Sheets::SPREADSHEETS]);
-    $client->setAuthConfig($credPath);
-    $client->setAccessType('offline');
-=======
-        $values = [[$name, $sample, $score, $category]];
-        $body = new \Google_Service_Sheets_ValueRange(['values' => $values]);
-        $params = ['valueInputOption' => 'USER_ENTERED'];
->>>>>>> clean-main
+    
+    $values = [[$name, $sample, $score, $category]];
+    $body = new \Google_Service_Sheets_ValueRange(['values' => $values]);
+     $params = ['valueInputOption' => 'USER_ENTERED'];
+clean-main
 
     $service = new \Google_Service_Sheets($client);
     $spreadsheetId = '1pPZyPkN3EVFlj4-7aDUkb402By6h_-fm4-sR-2RhACU';  // 確認填入正確ID
