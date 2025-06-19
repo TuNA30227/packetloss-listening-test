@@ -117,7 +117,6 @@ class SiteController extends Controller
         ];
     }
 
-clean-main
     public function actionExportCsv()
     {
         $sourceFile = Yii::getAlias('@app/data/mos_results.csv');
