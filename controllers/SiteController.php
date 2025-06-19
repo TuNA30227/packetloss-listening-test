@@ -246,7 +246,6 @@ class SiteController extends Controller
     $values = [[$name, $sample, $score, $category]];
     $body = new \Google_Service_Sheets_ValueRange(['values' => $values]);
      $params = ['valueInputOption' => 'USER_ENTERED'];
-clean-main
 
     $service = new \Google_Service_Sheets($client);
     $spreadsheetId = '1pPZyPkN3EVFlj4-7aDUkb402By6h_-fm4-sR-2RhACU';  // 確認填入正確ID
