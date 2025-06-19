@@ -55,7 +55,6 @@ class SiteController extends Controller
         return $this->render('index', ['scores' => $scores]);
     }
 
-
     public function actionSubmitCsv()
     {
         Yii::$app->response->format = Response::FORMAT_JSON;
@@ -69,7 +68,7 @@ class SiteController extends Controller
             'Noisy'     => range(28, 54),
             'PWN'       => range(55, 81),
             'PWN+SES'   => range(82, 108),
-            'FCN'       => range(109, 135)
+            'FCN'       => range(109, 135),
         ];
 
         $categoryScores = [];
@@ -228,41 +227,4 @@ class SiteController extends Controller
             'stats' => $summary,
         ]);
     }
-
-    public function actionSubmit()
-{
-    $name = $_POST['name'] ?? '';
-    $sample = $_POST['sample'] ?? '';
-    $score = $_POST['score'] ?? '';
-    $category = $_POST['category'] ?? '';
-
-    require_once __DIR__ . '/../vendor/autoload.php';
-
-
-    $credPath = sys_get_temp_dir() . '/credentials.json';
-    file_put_contents($credPath, $jsonCreds);
-
-    
-    $values = [[$name, $sample, $score, $category]];
-    $body = new \Google_Service_Sheets_ValueRange(['values' => $values]);
-     $params = ['valueInputOption' => 'USER_ENTERED'];
-
-    $service = new \Google_Service_Sheets($client);
-    $spreadsheetId = '1pPZyPkN3EVFlj4-7aDUkb402By6h_-fm4-sR-2RhACU';  // 確認填入正確ID
-    $range = 'Sheet1!A2';
-
-    $values = [[$name, $sample, $score, $category]];
-    $body = new \Google_Service_Sheets_ValueRange([
-        'values' => $values
-    ]);
-    $params = ['valueInputOption' => 'USER_ENTERED'];
-
-    try {
-        $service->spreadsheets_values->append($spreadsheetId, $range, $body, $params);
-        echo "<h2>✅ 感謝您的填寫！資料已寫入 Google Sheet。</h2>";
-    } catch (\Exception $e) {
-        echo "<h2>❌ 發生錯誤：" . htmlspecialchars($e->getMessage()) . "</h2>";
-    }
-}
-
 }
