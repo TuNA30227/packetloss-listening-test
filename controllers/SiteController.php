@@ -239,9 +239,6 @@ class SiteController extends Controller
     require_once __DIR__ . '/../vendor/autoload.php';
 
 
- clean-main
-
-    // 寫成暫存檔案
     $credPath = sys_get_temp_dir() . '/credentials.json';
     file_put_contents($credPath, $jsonCreds);
 
