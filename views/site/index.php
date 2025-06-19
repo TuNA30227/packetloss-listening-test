@@ -133,7 +133,7 @@ document.addEventListener("DOMContentLoaded", function () {
         answers[currentIndex] = score.value;
 
         try {
-            await fetch('/index.php?r=site/ajax-submit', {
+            await fetch('/index.php?r=site/submit-csv', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
