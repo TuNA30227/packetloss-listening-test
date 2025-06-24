@@ -28,7 +28,7 @@ body {
 <br><br>
 
 <form id="start-form">
-    <label for="username">請輸入您的姓名：</label><br>
+    <label for="username">請輸入您的年齡以及性別(EX:24BOY,請輸入英文BOY OR GIRL)：</label><br>
     <input type="text" id="username" required><br><br>
     <button type="submit">開始正式測驗</button>
 </form>
